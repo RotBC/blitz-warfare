@@ -23,12 +23,12 @@ function skills.init_player(player_index)
     shield_ready_tick = 0,
     turret_ready_tick = 0
   }
+  store.rolling_characters = store.rolling_characters or {}
   store.invulnerable_characters = store.invulnerable_characters or {}
-  store.shielded_characters = store.shielded_characters or {}
   store.temp_turrets = store.temp_turrets or {}
 end
 
--- 1. Dark Souls Roll (Dodge Roll with i-frames)
+-- 1. Dark Souls Dodge Roll (Smooth glide over 10 ticks with i-frames & dust trail)
 function skills.handle_dash(event)
   local player = game.get_player(event.player_index)
   if not player or not player.character or not player.character.valid then return end
@@ -53,58 +53,44 @@ function skills.handle_dash(event)
     return
   end
 
-  -- Determine direction: walking direction first, or character facing direction
   local char = player.character
   local dir = (player.walking_state and player.walking_state.walking) and player.walking_state.direction or char.direction
   local vec = DIRECTION_VECTORS[dir] or {x = 0, y = -1}
 
-  -- Compact dodge distance (DS roll feel ~ 3.2 tiles)
-  local roll_distance = 3.2
-  local target_pos = {
-    x = player.position.x + (vec.x * roll_distance),
-    y = player.position.y + (vec.y * roll_distance)
+  -- Grant i-frames during the roll
+  char.destructible = false
+
+  -- Register active rolling physics
+  store.rolling_characters = store.rolling_characters or {}
+  store.rolling_characters[char.unit_number] = {
+    player = player,
+    character = char,
+    vec = vec,
+    ticks_left = 10,
+    speed_per_tick = 0.35 -- 10 * 0.35 = 3.5 tiles smooth roll
   }
 
-  local safe_pos = player.surface.find_non_colliding_position("character", target_pos, 2.5, 0.2)
-  if safe_pos then
-    local start_pos = player.position
+  p_data.dash_ready_tick = current_tick + cooldown
 
-    -- Smoke and dust at start position
-    player.surface.create_trivial_smoke{name = "smoke-fast", position = start_pos}
+  -- Starting dust puff
+  player.surface.create_trivial_smoke{name = "smoke-fast", position = player.position}
 
-    -- Teleport character for snappy roll feel
-    player.teleport(safe_pos)
+  -- Cyan i-frame indicator ring at start
+  rendering.draw_circle{
+    color = {r = 0.3, g = 0.9, b = 1.0, a = 0.8},
+    radius = 0.8,
+    width = 2,
+    filled = false,
+    target = char,
+    surface = player.surface,
+    time_to_live = 15
+  }
 
-    -- Visual trail and dust at landing
-    player.surface.create_trivial_smoke{name = "smoke-fast", position = safe_pos}
-
-    -- Visual i-frame pulse (cyan ring)
-    rendering.draw_circle{
-      color = {r = 0.3, g = 0.8, b = 1.0, a = 0.6},
-      radius = 0.8,
-      width = 2,
-      filled = false,
-      target = char,
-      surface = player.surface,
-      time_to_live = 20
-    }
-
-    -- Dark Souls i-frames: Invulnerability for 20 ticks (~0.33 seconds)
-    char.destructible = false
-    store.invulnerable_characters = store.invulnerable_characters or {}
-    store.invulnerable_characters[char.unit_number] = {
-      character = char,
-      restore_tick = current_tick + 20
-    }
-
-    p_data.dash_ready_tick = current_tick + cooldown
-
-    player.create_local_flying_text{
-      text = {"blitz.dash-used"},
-      position = safe_pos,
-      color = {r = 0.4, g = 0.9, b = 1.0}
-    }
-  end
+  player.create_local_flying_text{
+    text = {"blitz.dash-used"},
+    position = player.position,
+    color = {r = 0.4, g = 0.9, b = 1.0}
+  }
 end
 
 -- 2. Energy Shield with Visual Barrier Dome & Lighting
@@ -137,8 +123,8 @@ function skills.handle_shield(event)
 
   -- Visual Energy Barrier Dome: Outer glowing ring
   rendering.draw_circle{
-    color = {r = 0.1, g = 0.8, b = 1.0, a = 0.8},
-    radius = 1.5,
+    color = {r = 0.1, g = 0.85, b = 1.0, a = 0.85},
+    radius = 1.6,
     width = 3,
     filled = false,
     target = char,
@@ -149,7 +135,7 @@ function skills.handle_shield(event)
   -- Inner translucent energy field
   rendering.draw_circle{
     color = {r = 0.1, g = 0.5, b = 1.0, a = 0.25},
-    radius = 1.4,
+    radius = 1.5,
     filled = true,
     target = char,
     surface = player.surface,
@@ -159,7 +145,7 @@ function skills.handle_shield(event)
   -- Energy light aura around player
   rendering.draw_light{
     sprite = "utility/light_medium",
-    scale = 2.0,
+    scale = 2.2,
     intensity = 1.0,
     minimum_darkness = 0,
     target = char,
@@ -170,7 +156,7 @@ function skills.handle_shield(event)
   -- Spark burst on trigger
   player.surface.create_entity{name = "flying-robot-damaged-explosion", position = player.position}
 
-  -- Invulnerability/high defense state during barrier
+  -- Invulnerability / absorption during barrier
   char.destructible = false
   store.invulnerable_characters = store.invulnerable_characters or {}
   store.invulnerable_characters[char.unit_number] = {
@@ -187,7 +173,7 @@ function skills.handle_shield(event)
   }
 end
 
--- 3. Deployable Nano-Turret (Spawned in front of the player without collision)
+-- 3. Deployable Nano-Turret (Placed forward, no collision with character)
 function skills.handle_turret(event)
   local player = game.get_player(event.player_index)
   if not player or not player.character or not player.character.valid then return end
@@ -212,7 +198,6 @@ function skills.handle_turret(event)
     return
   end
 
-  -- Calculate position 3.0 tiles IN FRONT of the player
   local char = player.character
   local dir = (player.walking_state and player.walking_state.walking) and player.walking_state.direction or char.direction
   local vec = DIRECTION_VECTORS[dir] or {x = 0, y = 1}
@@ -222,7 +207,6 @@ function skills.handle_turret(event)
     y = player.position.y + (vec.y * 3.0)
   }
 
-  -- Find safe position near forward_pos (away from the player character)
   local spawn_pos = player.surface.find_non_colliding_position("blitz-nano-turret", forward_pos, 4, 0.5)
   if spawn_pos then
     local turret = player.surface.create_entity{
@@ -233,10 +217,10 @@ function skills.handle_turret(event)
     if turret and turret.valid then
       turret.insert{name = "firearm-magazine", count = 50}
 
-      -- Deployment visual & sound
+      -- Deployment smoke & ring
       player.surface.create_trivial_smoke{name = "smoke-fast", position = spawn_pos}
       rendering.draw_circle{
-        color = {r = 1.0, g = 0.8, b = 0.2, a = 0.5},
+        color = {r = 1.0, g = 0.8, b = 0.2, a = 0.6},
         radius = 1.0,
         width = 2,
         filled = false,
@@ -247,7 +231,6 @@ function skills.handle_turret(event)
 
       p_data.turret_ready_tick = current_tick + cooldown
 
-      -- Temporary turret lifetime: 25 seconds
       store.temp_turrets = store.temp_turrets or {}
       table.insert(store.temp_turrets, {entity = turret, destroy_tick = current_tick + (25 * 60)})
 
@@ -260,23 +243,63 @@ function skills.handle_turret(event)
   end
 end
 
--- Clean expired temporary states on tick
+-- Tick handler: updates smooth rolling physics and cleans temporary entities
 function skills.on_tick(current_tick)
   local store = get_storage()
 
-  -- 1. Restore destructible state after i-frames / shield expire
+  -- 1. Smooth Dodge Roll Physics Update (10 ticks glide)
+  if store.rolling_characters then
+    for unit_number, roll in pairs(store.rolling_characters) do
+      local char = roll.character
+      if char and char.valid then
+        local next_pos = {
+          x = char.position.x + (roll.vec.x * roll.speed_per_tick),
+          y = char.position.y + (roll.vec.y * roll.speed_per_tick)
+        }
+
+        local safe = char.surface.find_non_colliding_position("character", next_pos, 0.4, 0.1)
+        if safe then
+          char.teleport(safe)
+          -- Dust trail every 2 frames
+          if roll.ticks_left % 2 == 0 then
+            char.surface.create_trivial_smoke{name = "smoke-fast", position = char.position}
+          end
+        else
+          -- Wall/cliff hit, stop roll early
+          roll.ticks_left = 0
+        end
+
+        roll.ticks_left = roll.ticks_left - 1
+        if roll.ticks_left <= 0 then
+          -- Restore vulnerability if not shielded
+          local is_shielded = store.invulnerable_characters and store.invulnerable_characters[unit_number]
+          if not is_shielded then
+            char.destructible = true
+          end
+          store.rolling_characters[unit_number] = nil
+        end
+      else
+        store.rolling_characters[unit_number] = nil
+      end
+    end
+  end
+
+  -- 2. Restore vulnerability after Shield expires
   if store.invulnerable_characters then
     for unit_number, data in pairs(store.invulnerable_characters) do
       if current_tick >= data.restore_tick then
         if data.character and data.character.valid then
-          data.character.destructible = true
+          local is_rolling = store.rolling_characters and store.rolling_characters[unit_number]
+          if not is_rolling then
+            data.character.destructible = true
+          end
         end
         store.invulnerable_characters[unit_number] = nil
       end
     end
   end
 
-  -- 2. Clean up expired temporary turrets
+  -- 3. Clean up expired temporary turrets
   if store.temp_turrets then
     for i = #store.temp_turrets, 1, -1 do
       local item = store.temp_turrets[i]

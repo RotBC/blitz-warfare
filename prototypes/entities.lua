@@ -1,14 +1,18 @@
 local nano_turret_item = table.deepcopy(data.raw["item"]["gun-turret"])
 nano_turret_item.name = "blitz-nano-turret"
+nano_turret_item.icon = "__blitz-warfare__/graphics/icons/nano-turret.png"
+nano_turret_item.icon_size = 64
 nano_turret_item.place_result = "blitz-nano-turret"
 nano_turret_item.order = "c[blitz]-a[nano-turret]"
 
 local nano_turret_entity = table.deepcopy(data.raw["ammo-turret"]["gun-turret"])
 nano_turret_entity.name = "blitz-nano-turret"
+nano_turret_entity.icon = "__blitz-warfare__/graphics/icons/nano-turret.png"
+nano_turret_entity.icon_size = 64
 nano_turret_entity.minable = {mining_time = 0.2, result = "blitz-nano-turret"}
-nano_turret_entity.max_health = 250
-nano_turret_entity.attack_parameters.cooldown = 4 -- very rapid fire
-nano_turret_entity.attack_parameters.range = 16
+nano_turret_entity.max_health = 300
+nano_turret_entity.attack_parameters.cooldown = 4 -- ultra rapid fire
+nano_turret_entity.attack_parameters.range = 18
 
 -- Command Core (Headquarters for PvP)
 local core_item = table.deepcopy(data.raw["item"]["radar"])
