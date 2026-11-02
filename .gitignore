@@ -1,0 +1,12 @@
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Factorio logs and temporary files
+*.tmp
+*.bak
+*.zip
+
+# IDE
+.idea/
+.vscode/

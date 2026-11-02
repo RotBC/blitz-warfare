@@ -1,0 +1,13 @@
+{
+  "name": "blitz-warfare",
+  "version": "0.1.0",
+  "title": "Blitz Warfare - Fast-Paced PvP & Action Combat",
+  "author": "RotBC",
+  "contact": "",
+  "homepage": "https://github.com/RotBC/blitz-warfare",
+  "factorio_version": "2.0",
+  "dependencies": [
+    "base >= 2.0.0"
+  ],
+  "description": "Fast-paced PvP RTS overhaul mod for Factorio. Active combat skills (Dash, Energy Shield, Deployable Nano-Turrets), dynamic early-game weaponry, accelerated blitz tech tree, and team headquarters siege."
+}
