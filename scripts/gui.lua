@@ -12,11 +12,15 @@ function gui.create_hud(player)
   local frame = top.add{
     type = "frame",
     name = "blitz_hud",
-    direction = "horizontal",
-    style = "blitz_hud_frame"
+    direction = "horizontal"
   }
 
-  local flow = frame.add{type = "flow", direction = "horizontal"}
+  local flow = frame.add{
+    type = "flow",
+    name = "skills_flow",
+    direction = "horizontal"
+  }
+  
   flow.add{type = "label", name = "lbl_dash", caption = "Dash [SHIFT+SPC]: RDY"}
   flow.add{type = "label", caption = " | "}
   flow.add{type = "label", name = "lbl_shield", caption = "Shield [V]: RDY"}
@@ -37,7 +41,7 @@ function gui.update_hud(player)
   if not p_data then return end
 
   local current_tick = game.tick
-  local flow = frame.children[1]
+  local flow = frame.skills_flow
   if not flow then return end
 
   -- Dash

@@ -42,7 +42,7 @@ end
 
 function pvp.give_starter_kit(player)
   if not player or not player.character then return end
-  local inv = player.get_main_inventory()
+  local inv = player.get_main_inventory() or player.get_inventory(defines.inventory.character_main)
   if not inv then return end
 
   inv.clear()
