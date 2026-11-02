@@ -40,7 +40,7 @@ script.on_event("blitz-skill-turret", skills.handle_turret)
 
 -- Game loop tick
 script.on_event(defines.events.on_tick, function(event)
-  skills.clean_expired_turrets(event.tick)
+  skills.on_tick(event.tick)
 
   -- Update GUI every 15 ticks (~4 times per second)
   if event.tick % 15 == 0 then
