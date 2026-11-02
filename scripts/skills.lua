@@ -70,13 +70,13 @@ function skills.handle_dash(event)
     local start_pos = player.position
 
     -- Smoke and dust at start position
-    player.surface.create_entity{name = "smoke-fast", position = start_pos}
+    player.surface.create_trivial_smoke{name = "smoke-fast", position = start_pos}
 
     -- Teleport character for snappy roll feel
     player.teleport(safe_pos)
 
     -- Visual trail and dust at landing
-    player.surface.create_entity{name = "smoke-fast", position = safe_pos}
+    player.surface.create_trivial_smoke{name = "smoke-fast", position = safe_pos}
 
     -- Visual i-frame pulse (cyan ring)
     rendering.draw_circle{
@@ -234,7 +234,7 @@ function skills.handle_turret(event)
       turret.insert{name = "firearm-magazine", count = 50}
 
       -- Deployment visual & sound
-      player.surface.create_entity{name = "smoke-fast", position = spawn_pos}
+      player.surface.create_trivial_smoke{name = "smoke-fast", position = spawn_pos}
       rendering.draw_circle{
         color = {r = 1.0, g = 0.8, b = 0.2, a = 0.5},
         radius = 1.0,
@@ -283,7 +283,7 @@ function skills.on_tick(current_tick)
       if current_tick >= item.destroy_tick then
         if item.entity and item.entity.valid then
           item.entity.surface.create_entity{name = "small-scorchmark", position = item.entity.position}
-          item.entity.surface.create_entity{name = "smoke-fast", position = item.entity.position}
+          item.entity.surface.create_trivial_smoke{name = "smoke-fast", position = item.entity.position}
           item.entity.destroy()
         end
         table.remove(store.temp_turrets, i)
